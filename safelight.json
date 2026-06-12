@@ -1,0 +1,8 @@
+{
+  "id": "batch-tools",
+  "name": "Batch Tools",
+  "version": "1.0.0",
+  "description": "Batch editing: sync develop settings across selected photos, relative adjustments, bulk reset.",
+  "author": "Tokyo",
+  "main": "dist/index.js"
+}
