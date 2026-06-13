@@ -157,7 +157,6 @@ var S = {
   check: { display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden" },
   btn: { padding: "5px 8px", background: "var(--color-surface-3)", border: "1px solid var(--color-border)", borderRadius: "3px", color: "var(--color-text-primary)", cursor: "pointer", font: "inherit" },
   row: { display: "flex", gap: "6px", alignItems: "center" },
-  select: { ...field, flex: 1, minWidth: 0 },
   num: { ...field, width: "56px" },
   barOuter: { height: "3px", background: "var(--color-surface-3)", borderRadius: "2px", overflow: "hidden" },
   status: { color: "var(--color-text-secondary)", minHeight: "13px" }
@@ -189,9 +188,18 @@ function BatchPanel() {
     next.has(key) ? next.delete(key) : next.add(key);
     changeGroups(next);
   };
-  const [relParam, setRelParam] = useState("exposure");
-  const [relAmount, setRelAmount] = useState(String(REL_PARAMS[0].def));
-  const relDef = REL_PARAMS.find((p) => p.key === relParam);
+  const [relAmounts, setRelAmounts] = useState(() => {
+    const init = {};
+    REL_PARAMS.forEach((p) => {
+      init[p.key] = String(p.def);
+    });
+    return init;
+  });
+  const setRelAmount = (key, val) => setRelAmounts((a) => ({ ...a, [key]: val }));
+  const nudge = (key, step) => setRelAmounts((a) => {
+    const next = Math.round((parseFloat(a[key] || 0) + step) * 1e4) / 1e4;
+    return { ...a, [key]: String(next) };
+  });
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
   const [status, setStatus] = useState("");
@@ -224,35 +232,42 @@ function BatchPanel() {
   const syncTargets = activeId ? [...selectedIds].filter((id) => id !== activeId).length : 0;
   const noGroups = s.syncMode === "merge" && groups.size === 0;
   const pct = progress && progress.total ? Math.round(100 * progress.done / progress.total) : 0;
-  return /* @__PURE__ */ h("div", { style: S.wrap }, /* @__PURE__ */ h("div", { style: S.head }, /* @__PURE__ */ h("span", { style: S.src, title: source ? source.filename : "" }, "Source: ", source ? source.filename : "\u2014"), /* @__PURE__ */ h("span", null, selectedIds.size, " selected")), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Sync settings (", s.syncMode, ")"), /* @__PURE__ */ h("span", { style: { display: "flex", gap: "6px" } }, /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(GROUPS.map((g) => g.key))) }, "All"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(/* @__PURE__ */ new Set()) }, "None"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(DEFAULT_GROUPS)) }, "Default"))), /* @__PURE__ */ h("div", { style: { ...S.grid, ...s.syncMode === "replace" ? { opacity: 0.45, pointerEvents: "none" } : null } }, GROUPS.map((g) => /* @__PURE__ */ h("label", { key: g.key, style: S.check, title: g.geo ? "Geometry-dependent \u2014 see Geometry safety in settings" : void 0 }, /* @__PURE__ */ h("input", { type: "checkbox", checked: groups.has(g.key), onChange: () => toggleGroup(g.key) }), /* @__PURE__ */ h("span", null, g.label, g.geo ? " \u26A0" : "")))), /* @__PURE__ */ h(Btn, { primary: true, off: busy || !syncTargets || noGroups, on: () => run((p) => runSync(groups, p)) }, busy && progress ? `Syncing ${progress.done}/${progress.total}\u2026` : `Sync to ${syncTargets} photo${syncTargets === 1 ? "" : "s"}`)), s.showRelative && /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Relative adjustment")), /* @__PURE__ */ h("div", { style: S.row }, /* @__PURE__ */ h(
-    "select",
-    {
-      style: S.select,
-      value: relParam,
-      onChange: (e) => {
-        const def = REL_PARAMS.find((p) => p.key === e.target.value);
-        setRelParam(def.key);
-        setRelAmount(String(def.def));
+  return /* @__PURE__ */ h("div", { style: S.wrap }, /* @__PURE__ */ h("div", { style: S.head }, /* @__PURE__ */ h("span", { style: S.src, title: source ? source.filename : "" }, "Source: ", source ? source.filename : "—"), /* @__PURE__ */ h("span", null, selectedIds.size, " selected")), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Sync settings (", s.syncMode, ")"), /* @__PURE__ */ h("span", { style: { display: "flex", gap: "6px" } }, /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(GROUPS.map((g) => g.key))) }, "All"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(/* @__PURE__ */ new Set()) }, "None"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(DEFAULT_GROUPS)) }, "Default"))), /* @__PURE__ */ h("div", { style: { ...S.grid, ...s.syncMode === "replace" ? { opacity: 0.45, pointerEvents: "none" } : null } }, GROUPS.map((g) => /* @__PURE__ */ h("label", { key: g.key, style: S.check, title: g.geo ? "Geometry-dependent — see Geometry safety in settings" : void 0 }, /* @__PURE__ */ h("input", { type: "checkbox", checked: groups.has(g.key), onChange: () => toggleGroup(g.key) }), /* @__PURE__ */ h("span", null, g.label, g.geo ? " ⚠" : "")))), /* @__PURE__ */ h(Btn, { primary: true, off: busy || !syncTargets || noGroups, on: () => run((p) => runSync(groups, p)) }, busy && progress ? `Syncing ${progress.done}/${progress.total}…` : `Sync to ${syncTargets} photo${syncTargets === 1 ? "" : "s"}`)), s.showRelative && /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Relative adjustment"), /* @__PURE__ */ h("span", { style: { color: "var(--color-text-secondary)", fontStyle: "italic" } }, "enter to apply")), REL_PARAMS.map((p) => {
+    const amount = relAmounts[p.key] ?? String(p.def);
+    const canApply = !busy && !!selectedIds.size && !!parseFloat(amount);
+    const applyThis = () => {
+      if (canApply) run((prog) => runRelative(p.key, parseFloat(amount) || 0, prog));
+    };
+    return /* @__PURE__ */ h("div", { key: p.key, style: S.row }, /* @__PURE__ */ h("span", { style: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.label), /* @__PURE__ */ h(
+      "button",
+      {
+        style: busy || !selectedIds.size ? disabled(S.btn) : S.btn,
+        disabled: busy || !selectedIds.size,
+        onClick: () => nudge(p.key, -p.step)
+      },
+      "−"
+    ), /* @__PURE__ */ h(
+      "input",
+      {
+        style: { ...S.num, width: "52px" },
+        type: "number",
+        step: p.step,
+        value: amount,
+        onChange: (e) => setRelAmount(p.key, e.target.value),
+        onKeyDown: (e) => {
+          if (e.key === "Enter") applyThis();
+        }
       }
-    },
-    REL_PARAMS.map((p) => /* @__PURE__ */ h("option", { key: p.key, value: p.key }, p.label))
-  ), /* @__PURE__ */ h(
-    "input",
-    {
-      style: S.num,
-      type: "number",
-      step: relDef.step,
-      value: relAmount,
-      onChange: (e) => setRelAmount(e.target.value)
-    }
-  ), /* @__PURE__ */ h(
-    Btn,
-    {
-      off: busy || !selectedIds.size || !parseFloat(relAmount),
-      on: () => run((p) => runRelative(relParam, parseFloat(relAmount) || 0, p))
-    },
-    "Apply"
-  ))), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h(Btn, { off: busy || !selectedIds.size, on: () => run(runReset) }, "Reset ", selectedIds.size, " selected")), busy && progress && /* @__PURE__ */ h("div", { style: S.barOuter }, /* @__PURE__ */ h("div", { style: { height: "100%", width: pct + "%", background: "var(--color-accent)" } })), /* @__PURE__ */ h("div", { style: S.status }, status));
+    ), /* @__PURE__ */ h(
+      "button",
+      {
+        style: busy || !selectedIds.size ? disabled(S.btn) : S.btn,
+        disabled: busy || !selectedIds.size,
+        onClick: () => nudge(p.key, p.step)
+      },
+      "+"
+    ));
+  })), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h(Btn, { off: busy || !selectedIds.size, on: () => run(runReset) }, "Reset ", selectedIds.size, " selected")), busy && progress && /* @__PURE__ */ h("div", { style: S.barOuter }, /* @__PURE__ */ h("div", { style: { height: "100%", width: pct + "%", background: "var(--color-accent)" } })), /* @__PURE__ */ h("div", { style: S.status }, status));
 }
 function activate(_api) {
   api = _api;
@@ -273,8 +288,8 @@ function activate(_api) {
         default: "merge",
         hint: "Merge overwrites only the checked groups; replace copies the source's entire edit recipe.",
         options: [
-          { value: "merge", label: "Merge \u2014 only checked groups" },
-          { value: "replace", label: "Replace \u2014 entire edit recipe" }
+          { value: "merge", label: "Merge — only checked groups" },
+          { value: "replace", label: "Replace — entire edit recipe" }
         ]
       },
       {

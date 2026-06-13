@@ -237,9 +237,16 @@ function BatchPanel() {
     changeGroups(next);
   };
 
-  const [relParam, setRelParam] = useState("exposure");
-  const [relAmount, setRelAmount] = useState(String(REL_PARAMS[0].def));
-  const relDef = REL_PARAMS.find((p) => p.key === relParam);
+  const [relAmounts, setRelAmounts] = useState(() => {
+    const init = {};
+    REL_PARAMS.forEach((p) => { init[p.key] = String(p.def); });
+    return init;
+  });
+  const setRelAmount = (key, val) => setRelAmounts((a) => ({ ...a, [key]: val }));
+  const nudge = (key, step) => setRelAmounts((a) => {
+    const next = Math.round((parseFloat(a[key] || 0) + step) * 10000) / 10000;
+    return { ...a, [key]: String(next) };
+  });
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -309,35 +316,29 @@ function BatchPanel() {
 
       {s.showRelative && (
         <div style={S.section}>
-          <div style={S.title}><span>Relative adjustment</span></div>
-          <div style={S.row}>
-            <select
-              style={S.select}
-              value={relParam}
-              onChange={(e) => {
-                const def = REL_PARAMS.find((p) => p.key === e.target.value);
-                setRelParam(def.key);
-                setRelAmount(String(def.def));
-              }}
-            >
-              {REL_PARAMS.map((p) => (
-                <option key={p.key} value={p.key}>{p.label}</option>
-              ))}
-            </select>
-            <input
-              style={S.num}
-              type="number"
-              step={relDef.step}
-              value={relAmount}
-              onChange={(e) => setRelAmount(e.target.value)}
-            />
-            <Btn
-              off={busy || !selectedIds.size || !parseFloat(relAmount)}
-              on={() => run((p) => runRelative(relParam, parseFloat(relAmount) || 0, p))}
-            >
-              Apply
-            </Btn>
-          </div>
+          <div style={S.title}><span>Relative adjustment</span><span style={{ color: "var(--color-text-secondary)", fontStyle: "italic" }}>enter to apply</span></div>
+          {REL_PARAMS.map((p) => {
+            const amount = relAmounts[p.key] ?? String(p.def);
+            const canApply = !busy && !!selectedIds.size && !!parseFloat(amount);
+            const applyThis = () => { if (canApply) run((prog) => runRelative(p.key, parseFloat(amount) || 0, prog)); };
+            return (
+              <div key={p.key} style={S.row}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
+                <button style={busy || !selectedIds.size ? disabled(S.btn) : S.btn} disabled={busy || !selectedIds.size}
+                  onClick={() => nudge(p.key, -p.step)}>−</button>
+                <input
+                  style={{ ...S.num, width: "52px" }}
+                  type="number"
+                  step={p.step}
+                  value={amount}
+                  onChange={(e) => setRelAmount(p.key, e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") applyThis(); }}
+                />
+                <button style={busy || !selectedIds.size ? disabled(S.btn) : S.btn} disabled={busy || !selectedIds.size}
+                  onClick={() => nudge(p.key, p.step)}>+</button>
+              </div>
+            );
+          })}
         </div>
       )}
 
