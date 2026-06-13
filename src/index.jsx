@@ -35,16 +35,16 @@ const DEFAULT_GROUPS = GROUPS.filter((g) => !g.geo).map((g) => g.key);
 
 // Relative ("nudge") adjustments, clamped to the app's slider ranges.
 const REL_PARAMS = [
-  { key: "exposure",    label: "Exposure (EV)", min: -5, max: 5, step: 0.05, def: 0.5 },
-  { key: "contrast",    label: "Contrast",      min: -100, max: 100, step: 1, def: 10 },
-  { key: "highlights",  label: "Highlights",    min: -100, max: 100, step: 1, def: 10 },
-  { key: "shadows",     label: "Shadows",       min: -100, max: 100, step: 1, def: 10 },
-  { key: "whites",      label: "Whites",        min: -100, max: 100, step: 1, def: 10 },
-  { key: "blacks",      label: "Blacks",        min: -100, max: 100, step: 1, def: 10 },
-  { key: "vibrance",    label: "Vibrance",      min: -100, max: 100, step: 1, def: 10 },
-  { key: "saturation",  label: "Saturation",    min: -100, max: 100, step: 1, def: 10 },
-  { key: "temperature", label: "Temperature",   min: -100, max: 100, step: 1, def: 10 },
-  { key: "tint",        label: "Tint",          min: -100, max: 100, step: 1, def: 5 },
+  { key: "exposure",    label: "Exposure (EV)", min: -5, max: 5, step: 0.5, def: 0.5 },
+  { key: "contrast",    label: "Contrast",      min: -100, max: 100, step: 5, def: 5 },
+  { key: "highlights",  label: "Highlights",    min: -100, max: 100, step: 5, def: 5 },
+  { key: "shadows",     label: "Shadows",       min: -100, max: 100, step: 5, def: 5 },
+  { key: "whites",      label: "Whites",        min: -100, max: 100, step: 5, def: 5 },
+  { key: "blacks",      label: "Blacks",        min: -100, max: 100, step: 5, def: 5 },
+  { key: "vibrance",    label: "Vibrance",      min: -100, max: 100, step: 5, def: 5 },
+  { key: "saturation",  label: "Saturation",    min: -100, max: 100, step: 5, def: 5 },
+  { key: "temperature", label: "Temperature",   min: -100, max: 100, step: 5, def: 5 },
+  { key: "tint",        label: "Tint",          min: -100, max: 100, step: 5, def: 5 },
 ];
 
 // ── Settings (configured via ⚙ in the Extensions panel) ─────────────────────
@@ -243,10 +243,6 @@ function BatchPanel() {
     return init;
   });
   const setRelAmount = (key, val) => setRelAmounts((a) => ({ ...a, [key]: val }));
-  const nudge = (key, step) => setRelAmounts((a) => {
-    const next = Math.round((parseFloat(a[key] || 0) + step) * 10000) / 10000;
-    return { ...a, [key]: String(next) };
-  });
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -316,26 +312,25 @@ function BatchPanel() {
 
       {s.showRelative && (
         <div style={S.section}>
-          <div style={S.title}><span>Relative adjustment</span><span style={{ color: "var(--color-text-secondary)", fontStyle: "italic" }}>enter to apply</span></div>
+          <div style={S.title}><span>Relative adjustment</span></div>
           {REL_PARAMS.map((p) => {
             const amount = relAmounts[p.key] ?? String(p.def);
-            const canApply = !busy && !!selectedIds.size && !!parseFloat(amount);
-            const applyThis = () => { if (canApply) run((prog) => runRelative(p.key, parseFloat(amount) || 0, prog)); };
             return (
               <div key={p.key} style={S.row}>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
-                <button style={busy || !selectedIds.size ? disabled(S.btn) : S.btn} disabled={busy || !selectedIds.size}
-                  onClick={() => nudge(p.key, -p.step)}>−</button>
                 <input
-                  style={{ ...S.num, width: "52px" }}
+                  style={{ ...S.num, width: "60px" }}
                   type="number"
                   step={p.step}
                   value={amount}
-                  onChange={(e) => setRelAmount(p.key, e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") applyThis(); }}
+                  disabled={busy || !selectedIds.size}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRelAmount(p.key, val);
+                    const delta = parseFloat(val);
+                    if (!busy && selectedIds.size && delta) run((prog) => runRelative(p.key, delta, prog));
+                  }}
                 />
-                <button style={busy || !selectedIds.size ? disabled(S.btn) : S.btn} disabled={busy || !selectedIds.size}
-                  onClick={() => nudge(p.key, p.step)}>+</button>
               </div>
             );
           })}

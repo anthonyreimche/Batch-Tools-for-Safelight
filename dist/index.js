@@ -22,16 +22,16 @@ var GROUPS = [
 ];
 var DEFAULT_GROUPS = GROUPS.filter((g) => !g.geo).map((g) => g.key);
 var REL_PARAMS = [
-  { key: "exposure", label: "Exposure (EV)", min: -5, max: 5, step: 0.05, def: 0.5 },
-  { key: "contrast", label: "Contrast", min: -100, max: 100, step: 1, def: 10 },
-  { key: "highlights", label: "Highlights", min: -100, max: 100, step: 1, def: 10 },
-  { key: "shadows", label: "Shadows", min: -100, max: 100, step: 1, def: 10 },
-  { key: "whites", label: "Whites", min: -100, max: 100, step: 1, def: 10 },
-  { key: "blacks", label: "Blacks", min: -100, max: 100, step: 1, def: 10 },
-  { key: "vibrance", label: "Vibrance", min: -100, max: 100, step: 1, def: 10 },
-  { key: "saturation", label: "Saturation", min: -100, max: 100, step: 1, def: 10 },
-  { key: "temperature", label: "Temperature", min: -100, max: 100, step: 1, def: 10 },
-  { key: "tint", label: "Tint", min: -100, max: 100, step: 1, def: 5 }
+  { key: "exposure", label: "Exposure (EV)", min: -5, max: 5, step: 0.5, def: 0.5 },
+  { key: "contrast", label: "Contrast", min: -100, max: 100, step: 5, def: 5 },
+  { key: "highlights", label: "Highlights", min: -100, max: 100, step: 5, def: 5 },
+  { key: "shadows", label: "Shadows", min: -100, max: 100, step: 5, def: 5 },
+  { key: "whites", label: "Whites", min: -100, max: 100, step: 5, def: 5 },
+  { key: "blacks", label: "Blacks", min: -100, max: 100, step: 5, def: 5 },
+  { key: "vibrance", label: "Vibrance", min: -100, max: 100, step: 5, def: 5 },
+  { key: "saturation", label: "Saturation", min: -100, max: 100, step: 5, def: 5 },
+  { key: "temperature", label: "Temperature", min: -100, max: 100, step: 5, def: 5 },
+  { key: "tint", label: "Tint", min: -100, max: 100, step: 5, def: 5 }
 ];
 function settings() {
   const g = (k, f) => api.settings.get(k, f);
@@ -196,10 +196,6 @@ function BatchPanel() {
     return init;
   });
   const setRelAmount = (key, val) => setRelAmounts((a) => ({ ...a, [key]: val }));
-  const nudge = (key, step) => setRelAmounts((a) => {
-    const next = Math.round((parseFloat(a[key] || 0) + step) * 1e4) / 1e4;
-    return { ...a, [key]: String(next) };
-  });
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
   const [status, setStatus] = useState("");
@@ -232,40 +228,23 @@ function BatchPanel() {
   const syncTargets = activeId ? [...selectedIds].filter((id) => id !== activeId).length : 0;
   const noGroups = s.syncMode === "merge" && groups.size === 0;
   const pct = progress && progress.total ? Math.round(100 * progress.done / progress.total) : 0;
-  return /* @__PURE__ */ h("div", { style: S.wrap }, /* @__PURE__ */ h("div", { style: S.head }, /* @__PURE__ */ h("span", { style: S.src, title: source ? source.filename : "" }, "Source: ", source ? source.filename : "—"), /* @__PURE__ */ h("span", null, selectedIds.size, " selected")), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Sync settings (", s.syncMode, ")"), /* @__PURE__ */ h("span", { style: { display: "flex", gap: "6px" } }, /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(GROUPS.map((g) => g.key))) }, "All"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(/* @__PURE__ */ new Set()) }, "None"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(DEFAULT_GROUPS)) }, "Default"))), /* @__PURE__ */ h("div", { style: { ...S.grid, ...s.syncMode === "replace" ? { opacity: 0.45, pointerEvents: "none" } : null } }, GROUPS.map((g) => /* @__PURE__ */ h("label", { key: g.key, style: S.check, title: g.geo ? "Geometry-dependent — see Geometry safety in settings" : void 0 }, /* @__PURE__ */ h("input", { type: "checkbox", checked: groups.has(g.key), onChange: () => toggleGroup(g.key) }), /* @__PURE__ */ h("span", null, g.label, g.geo ? " ⚠" : "")))), /* @__PURE__ */ h(Btn, { primary: true, off: busy || !syncTargets || noGroups, on: () => run((p) => runSync(groups, p)) }, busy && progress ? `Syncing ${progress.done}/${progress.total}…` : `Sync to ${syncTargets} photo${syncTargets === 1 ? "" : "s"}`)), s.showRelative && /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Relative adjustment"), /* @__PURE__ */ h("span", { style: { color: "var(--color-text-secondary)", fontStyle: "italic" } }, "enter to apply")), REL_PARAMS.map((p) => {
+  return /* @__PURE__ */ h("div", { style: S.wrap }, /* @__PURE__ */ h("div", { style: S.head }, /* @__PURE__ */ h("span", { style: S.src, title: source ? source.filename : "" }, "Source: ", source ? source.filename : "—"), /* @__PURE__ */ h("span", null, selectedIds.size, " selected")), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Sync settings (", s.syncMode, ")"), /* @__PURE__ */ h("span", { style: { display: "flex", gap: "6px" } }, /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(GROUPS.map((g) => g.key))) }, "All"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(/* @__PURE__ */ new Set()) }, "None"), /* @__PURE__ */ h("button", { style: S.link, onClick: () => changeGroups(new Set(DEFAULT_GROUPS)) }, "Default"))), /* @__PURE__ */ h("div", { style: { ...S.grid, ...s.syncMode === "replace" ? { opacity: 0.45, pointerEvents: "none" } : null } }, GROUPS.map((g) => /* @__PURE__ */ h("label", { key: g.key, style: S.check, title: g.geo ? "Geometry-dependent — see Geometry safety in settings" : void 0 }, /* @__PURE__ */ h("input", { type: "checkbox", checked: groups.has(g.key), onChange: () => toggleGroup(g.key) }), /* @__PURE__ */ h("span", null, g.label, g.geo ? " ⚠" : "")))), /* @__PURE__ */ h(Btn, { primary: true, off: busy || !syncTargets || noGroups, on: () => run((p) => runSync(groups, p)) }, busy && progress ? `Syncing ${progress.done}/${progress.total}…` : `Sync to ${syncTargets} photo${syncTargets === 1 ? "" : "s"}`)), s.showRelative && /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h("div", { style: S.title }, /* @__PURE__ */ h("span", null, "Relative adjustment")), REL_PARAMS.map((p) => {
     const amount = relAmounts[p.key] ?? String(p.def);
-    const canApply = !busy && !!selectedIds.size && !!parseFloat(amount);
-    const applyThis = () => {
-      if (canApply) run((prog) => runRelative(p.key, parseFloat(amount) || 0, prog));
-    };
     return /* @__PURE__ */ h("div", { key: p.key, style: S.row }, /* @__PURE__ */ h("span", { style: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.label), /* @__PURE__ */ h(
-      "button",
-      {
-        style: busy || !selectedIds.size ? disabled(S.btn) : S.btn,
-        disabled: busy || !selectedIds.size,
-        onClick: () => nudge(p.key, -p.step)
-      },
-      "−"
-    ), /* @__PURE__ */ h(
       "input",
       {
-        style: { ...S.num, width: "52px" },
+        style: { ...S.num, width: "60px" },
         type: "number",
         step: p.step,
         value: amount,
-        onChange: (e) => setRelAmount(p.key, e.target.value),
-        onKeyDown: (e) => {
-          if (e.key === "Enter") applyThis();
+        disabled: busy || !selectedIds.size,
+        onChange: (e) => {
+          const val = e.target.value;
+          setRelAmount(p.key, val);
+          const delta = parseFloat(val);
+          if (!busy && selectedIds.size && delta) run((prog) => runRelative(p.key, delta, prog));
         }
       }
-    ), /* @__PURE__ */ h(
-      "button",
-      {
-        style: busy || !selectedIds.size ? disabled(S.btn) : S.btn,
-        disabled: busy || !selectedIds.size,
-        onClick: () => nudge(p.key, p.step)
-      },
-      "+"
     ));
   })), /* @__PURE__ */ h("div", { style: S.section }, /* @__PURE__ */ h(Btn, { off: busy || !selectedIds.size, on: () => run(runReset) }, "Reset ", selectedIds.size, " selected")), busy && progress && /* @__PURE__ */ h("div", { style: S.barOuter }, /* @__PURE__ */ h("div", { style: { height: "100%", width: pct + "%", background: "var(--color-accent)" } })), /* @__PURE__ */ h("div", { style: S.status }, status));
 }
