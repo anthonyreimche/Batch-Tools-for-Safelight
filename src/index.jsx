@@ -469,16 +469,11 @@ function makeStore() {
 }
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-// Inline styles on CSS variables: independent of the app's compiled Tailwind
-// classes and automatically correct under every theme.
-const field = {
-  background: "var(--color-surface-2)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "3px",
-  color: "var(--color-text-primary)",
-  font: "inherit",
-  padding: "3px 4px",
-};
+// Generic controls come from the shared core UI kit (`api.ui`) so the panel
+// matches the rest of the app. The remaining inline styles cover only the
+// bespoke bits the kit doesn't provide (collapsible sections, the clipboard
+// chip, the scope checkbox grid): inline styles on CSS variables stay
+// theme-correct without depending on the app's compiled Tailwind classes.
 const S = {
   wrap: { padding: "10px", display: "flex", flexDirection: "column", gap: "10px", fontSize: "11px", color: "var(--color-text-primary)", userSelect: "none" },
   head: { display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center", color: "var(--color-text-secondary)" },
@@ -487,33 +482,11 @@ const S = {
   secHead: { display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", padding: "4px 0", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-secondary)", borderBottom: "1px solid var(--color-border)" },
   secBody: { display: "flex", flexDirection: "column", gap: "8px", paddingTop: "8px" },
   caret: { width: "9px", display: "inline-block", textAlign: "center", flex: "0 0 auto" },
-  seg: { display: "flex", border: "1px solid var(--color-border)", borderRadius: "3px", overflow: "hidden" },
-  segBtn: { flex: 1, padding: "4px 6px", background: "var(--color-surface-2)", border: "none", borderRight: "1px solid var(--color-border)", color: "var(--color-text-secondary)", cursor: "pointer", font: "inherit" },
-  segOn: { background: "var(--color-accent)", color: "#ffffff" },
   title: { fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-secondary)", display: "flex", justifyContent: "space-between", alignItems: "baseline" },
-  link: { cursor: "pointer", color: "var(--color-accent)", background: "none", border: "none", font: "inherit", fontSize: "10px", padding: 0 },
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 8px" },
   check: { display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden" },
-  btn: { padding: "5px 8px", background: "var(--color-surface-3)", border: "1px solid var(--color-border)", borderRadius: "3px", color: "var(--color-text-primary)", cursor: "pointer", font: "inherit" },
-  btnRow: { display: "flex", gap: "6px" },
-  row: { display: "flex", gap: "6px", alignItems: "center" },
-  select: { ...field, flex: 1, minWidth: 0 },
-  num: { ...field, width: "64px", textAlign: "right" },
-  stepBtn: { ...field, width: "30px", cursor: "pointer", textAlign: "center", padding: "3px 0" },
-  barOuter: { height: "3px", background: "var(--color-surface-3)", borderRadius: "2px", overflow: "hidden" },
   status: { color: "var(--color-text-secondary)", minHeight: "13px" },
 };
-const btnPrimary = { ...S.btn, background: "var(--color-accent)", border: "1px solid var(--color-accent)", color: "#ffffff" };
-const disabled = (style) => ({ ...style, opacity: 0.45, cursor: "default" });
-
-function Btn({ primary, on, children, off, flex, title }) {
-  const base = { ...(primary ? btnPrimary : S.btn), ...(flex ? { flex: 1 } : null) };
-  return (
-    <button style={off ? disabled(base) : base} disabled={!!off} onClick={on} title={title}>
-      {children}
-    </button>
-  );
-}
 
 function Section({ id, title, openByDefault, open, onToggle, right, children }) {
   const isOpen = open[id] ?? openByDefault;
@@ -530,6 +503,8 @@ function Section({ id, title, openByDefault, open, onToggle, right, children }) 
 }
 
 function BatchPanel() {
+  if (!api.ui) return h("div", { style: { padding: "10px", fontSize: "11px", color: "var(--color-text-muted)" } }, "Update Safelight to use this panel.");
+  const ui = api.ui;
   const { useState, useEffect } = React;
   const selectedIds = cat()((s) => s.selectedIds);
   const photos = cat()((s) => s.photos);
@@ -556,7 +531,7 @@ function BatchPanel() {
   // Speed Edit local control state.
   const [relKey, setRelKey] = useState(REL_PARAMS[0].key);
   const relDef = REL_BY_KEY.get(relKey);
-  const [relAmount, setRelAmount] = useState(String(relDef.def));
+  const [relAmount, setRelAmount] = useState(relDef.def);
 
   const source = photos.find((p) => p.id === activeId);
   const syncTargets = activeId ? [...selectedIds].filter((id) => id !== activeId).length : 0;
@@ -564,7 +539,7 @@ function BatchPanel() {
   const pct = progress && progress.total ? Math.round((100 * progress.done) / progress.total) : 0;
 
   const speedEdit = (sign) => {
-    const amt = parseFloat(relAmount);
+    const amt = Number(relAmount);
     if (!busy && selectedIds.size && amt) st.relative(relKey, sign * amt);
   };
 
@@ -584,36 +559,34 @@ function BatchPanel() {
 
       {/* ── Copy / Paste & Sync ─────────────────────────────────────────── */}
       <Section id="sync" title="Copy / Paste & Sync" openByDefault open={open} onToggle={onToggle}>
-        <div style={S.btnRow}>
-          <Btn flex off={busy || !activeId} on={() => st.copy()} title="Copy the active photo's settings (Ctrl+Shift+C)">Copy</Btn>
-          <Btn flex primary off={busy || !clipboard || !selectedIds.size}
-               on={() => st.paste()} title="Paste clipboard to selected photos (Ctrl+Shift+V)">
+        <ui.Row gap={6}>
+          <ui.Button full disabled={busy || !activeId} onClick={() => st.copy()} title="Copy the active photo's settings (Ctrl+Shift+C)">Copy</ui.Button>
+          <ui.Button full variant="primary" disabled={busy || !clipboard || !selectedIds.size}
+               onClick={() => st.paste()} title="Paste clipboard to selected photos (Ctrl+Shift+V)">
             {busy && progress ? `${progress.done}/${progress.total}…` : "Paste"}
-          </Btn>
-        </div>
-        <Btn off={busy || !syncTargets || noGroups} on={() => st.sync()}
+          </ui.Button>
+        </ui.Row>
+        <ui.Button full disabled={busy || !syncTargets || noGroups} onClick={() => st.sync()}
              title="Copy the active photo to the other selected photos (Ctrl+Shift+S)">
           {busy && progress ? `Syncing ${progress.done}/${progress.total}…` : `Sync to ${syncTargets} photo${syncTargets === 1 ? "" : "s"}`}
-        </Btn>
+        </ui.Button>
 
-        <div style={S.seg}>
-          {["merge", "replace"].map((m, i) => (
-            <button key={m}
-              style={{ ...S.segBtn, ...(i === 1 ? { borderRight: "none" } : null), ...(mode === m ? S.segOn : null) }}
-              onClick={() => st.setMode(m)}
-              title={m === "merge" ? "Apply only the checked groups" : "Copy the entire edit recipe"}>
-              {m === "merge" ? "Merge" : "Replace"}
-            </button>
-          ))}
-        </div>
+        <ui.SegmentedControl
+          value={mode}
+          onChange={(m) => st.setMode(m)}
+          options={[
+            { value: "merge", label: "Merge", title: "Apply only the checked groups" },
+            { value: "replace", label: "Replace", title: "Copy the entire edit recipe" },
+          ]}
+        />
 
         <div style={S.title}>
           <span>Scope</span>
-          <span style={{ display: "flex", gap: "6px" }}>
-            <button style={S.link} onClick={() => st.setScope(new Set(GROUPS.map((g) => g.key)))}>All</button>
-            <button style={S.link} onClick={() => st.setScope(new Set())}>None</button>
-            <button style={S.link} onClick={() => st.setScope(new Set(DEFAULT_GROUPS))}>Default</button>
-          </span>
+          <ui.Row gap={6}>
+            <ui.Button variant="ghost" size="sm" onClick={() => st.setScope(new Set(GROUPS.map((g) => g.key)))}>All</ui.Button>
+            <ui.Button variant="ghost" size="sm" onClick={() => st.setScope(new Set())}>None</ui.Button>
+            <ui.Button variant="ghost" size="sm" onClick={() => st.setScope(new Set(DEFAULT_GROUPS))}>Default</ui.Button>
+          </ui.Row>
         </div>
         <div style={{ ...S.grid, ...(mode === "replace" ? { opacity: 0.45, pointerEvents: "none" } : null) }}>
           {GROUPS.map((g) => (
@@ -628,56 +601,47 @@ function BatchPanel() {
       {/* ── Speed Edit ──────────────────────────────────────────────────── */}
       {s.showRelative && (
         <Section id="speed" title="Speed Edit" open={open} onToggle={onToggle}>
-          <div style={S.row}>
-            <select
-              style={S.select}
-              value={relKey}
-              onChange={(e) => { setRelKey(e.target.value); setRelAmount(String(REL_BY_KEY.get(e.target.value).def)); }}
-            >
-              {REL_PARAMS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
-          </div>
-          <div style={S.row}>
-            <Btn off={busy || !selectedIds.size} on={() => speedEdit(-1)} title={`Subtract from ${selectedIds.size} selected`}>−</Btn>
-            <input
-              style={S.num}
-              type="number"
-              step={relDef.step}
+          <ui.Select
+            value={relKey}
+            onChange={(v) => { setRelKey(v); setRelAmount(REL_BY_KEY.get(v).def); }}
+            options={REL_PARAMS.map((p) => ({ value: p.key, label: p.label }))}
+          />
+          <ui.Row gap={6}>
+            <ui.Button disabled={busy || !selectedIds.size} onClick={() => speedEdit(-1)} title={`Subtract from ${selectedIds.size} selected`}>−</ui.Button>
+            <ui.NumberInput
               value={relAmount}
-              onChange={(e) => setRelAmount(e.target.value)}
+              onChange={setRelAmount}
+              step={relDef.step}
+              width="64px"
             />
-            <Btn off={busy || !selectedIds.size} on={() => speedEdit(1)} title={`Add to ${selectedIds.size} selected`}>+</Btn>
+            <ui.Button disabled={busy || !selectedIds.size} onClick={() => speedEdit(1)} title={`Add to ${selectedIds.size} selected`}>+</ui.Button>
             <span style={{ flex: 1, textAlign: "right", color: "var(--color-text-secondary)" }}>
               → {selectedIds.size} photo{selectedIds.size === 1 ? "" : "s"}
             </span>
-          </div>
+          </ui.Row>
         </Section>
       )}
 
       {/* ── Auto ────────────────────────────────────────────────────────── */}
       <Section id="auto" title="Auto" open={open} onToggle={onToggle}>
-        <div style={S.btnRow}>
-          <Btn flex off={busy || !selectedIds.size} on={() => st.autoTone()} title="Auto-correct tone on every selected photo">Auto Tone</Btn>
-          <Btn flex off={busy || !selectedIds.size} on={() => st.autoWB()} title="Auto white balance on every selected photo">Auto WB</Btn>
-        </div>
-        <Btn primary off={busy || !selectedIds.size} on={() => st.autoBoth()}
+        <ui.Row gap={6}>
+          <ui.Button full disabled={busy || !selectedIds.size} onClick={() => st.autoTone()} title="Auto-correct tone on every selected photo">Auto Tone</ui.Button>
+          <ui.Button full disabled={busy || !selectedIds.size} onClick={() => st.autoWB()} title="Auto white balance on every selected photo">Auto WB</ui.Button>
+        </ui.Row>
+        <ui.Button full variant="primary" disabled={busy || !selectedIds.size} onClick={() => st.autoBoth()}
              title="Auto tone + white balance on every selected photo">
           {busy && progress ? `Auto ${progress.done}/${progress.total}…` : `Auto Tone + WB · ${selectedIds.size} selected`}
-        </Btn>
+        </ui.Button>
       </Section>
 
       {/* ── Reset ───────────────────────────────────────────────────────── */}
       <Section id="reset" title="Reset" open={open} onToggle={onToggle}>
-        <Btn off={busy || !selectedIds.size} on={() => st.reset()}>
+        <ui.Button full disabled={busy || !selectedIds.size} onClick={() => st.reset()}>
           Reset {selectedIds.size} selected
-        </Btn>
+        </ui.Button>
       </Section>
 
-      {busy && progress && (
-        <div style={S.barOuter}>
-          <div style={{ height: "100%", width: pct + "%", background: "var(--color-accent)" }} />
-        </div>
-      )}
+      {busy && progress && <ui.ProgressBar value={pct / 100} />}
       <div style={S.status}>{status}</div>
     </div>
   );

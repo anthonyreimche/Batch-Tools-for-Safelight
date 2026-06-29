@@ -2,7 +2,8 @@
   "id": "batch-tools",
   "categories": ["Library"],
   "name": "Batch Tools",
-  "version": "1.2.1",
+  "version": "1.2.2",
+  "minAppVersion": "2.4.3",
   "description": "Batch editing: copy/paste an adjustments clipboard, selective sync, batch auto tone/white balance, speed-edit nudges and bulk reset.",
   "author": "Anthony Reimche",
   "main": "dist/index.js"
